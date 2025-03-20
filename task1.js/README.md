@@ -21,6 +21,7 @@ This project is a simple Node.js API that implements user authentication with pa
 ## Usage Examples
 
 - Register user
+  
   ![1](https://github.com/user-attachments/assets/94685a2e-9696-4830-acc3-0f826e999ae9)
 
 - postgreSQL database
