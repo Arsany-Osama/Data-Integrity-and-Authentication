@@ -1,0 +1,11 @@
+<%- include('partials/header') %>
+<div class="home-container">
+  <div class="home-card">
+    <h2>Welcome, <%= user && user.username ? user.username : 'Guest' %>!</h2>
+    <p>You are logged in via <%= user && user.auth_method ? user.auth_method.charAt(0).toUpperCase() + user.auth_method.slice(1) : 'unknown method' %>.</p>
+    <a href="/auth/logout" class="logout-btn">Logout</a>
+  </div>
+</div>
+</main>
+</body>
+</html>

@@ -4,5 +4,7 @@ task1.js/node_modules/
 # Ignore environment file inside task1
 task1.js/.env
 
+task2.js/node_modules/
+
 # Ignore system files
 Thumbs.db  # Windows thumbnail cache

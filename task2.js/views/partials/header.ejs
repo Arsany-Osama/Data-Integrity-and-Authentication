@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Auth System</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <nav>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <!-- <a href="/auth/home">Home</a>
+        <a href="/auth/logout">Logout</a> -->
+        <p>You're now a member with us</p>
+      <% } else { %>
+        <!-- <a href="/auth/login">Login</a>
+        <a href="/auth/signup">Signup</a> -->
+        <p>Please login or signup first</p>
+      <% } %>
+    </nav>
+  </header>
+  <main>
