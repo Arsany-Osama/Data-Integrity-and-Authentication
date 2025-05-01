@@ -9,16 +9,30 @@
 </head>
 <body>
   <header>
-    <nav>
-      <% if (typeof user !== 'undefined' && user) { %>
-        <!-- <a href="/auth/home">Home</a>
-        <a href="/auth/logout">Logout</a> -->
-        <p>You're now a member with us</p>
-      <% } else { %>
-        <!-- <a href="/auth/login">Login</a>
-        <a href="/auth/signup">Signup</a> -->
-        <p>Please login or signup first</p>
-      <% } %>
+    <nav class="nav-container">
+      <div class="logo">
+        <a href="/" class="logo-text">SecureAuth</a>
+      </div>
+      <button class="hamburger" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links">
+        <% if (typeof user !== 'undefined' && user) { %>
+          <% if (typeof request !== 'undefined' && request && request.path !== '/auth/home') { %>
+            <li><a href="/auth/home">Home</a></li>
+          <% } %>
+          <li><a href="#" class="logout-nav">Logout</a></li>
+        <% } else { %>
+          <li><a href="/auth/login">Login</a></li>
+          <li><a href="/auth/signup">Signup</a></li>
+        <% } %>
+        <li><button class="theme-toggle" aria-label="Toggle dark mode">
+          <svg class="sun-icon" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
+        </button></li>
+      </ul>
     </nav>
   </header>
   <main>

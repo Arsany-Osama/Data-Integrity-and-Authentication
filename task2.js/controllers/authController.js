@@ -1,7 +1,9 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const LoginLog = require('../models/LoginLog');
+require('dotenv').config();
 
 const passwordPolicy = [
   body('password')
@@ -19,8 +21,10 @@ const signup = [
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      req.session.error = errors.array().map(err => err.msg).join(', ');
-      return res.redirect('/auth/signup');
+      return res.status(400).json({
+        success: false,
+        message: errors.array().map(err => err.msg).join(', '),
+      });
     }
 
     const { username, email, password } = req.body;
@@ -28,14 +32,18 @@ const signup = [
     try {
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        req.session.error = 'Email already exists';
-        return res.redirect('/auth/signup');
+        return res.status(400).json({
+          success: false,
+          message: 'Email already exists',
+        });
       }
 
       const existingUsername = await User.findOne({ where: { username } });
       if (existingUsername) {
-        req.session.error = 'Username already exists';
-        return res.redirect('/auth/signup');
+        return res.status(400).json({
+          success: false,
+          message: 'Username already exists',
+        });
       }
 
       const user = await User.create({
@@ -48,102 +56,184 @@ const signup = [
       await LoginLog.create({
         user_id: user.id,
         ip_address: req.ip,
-        login_method: 'manual',
       });
 
-      req.session.error = null;
-      res.redirect('/auth/login');
+      const token = jwt.sign(
+        { id: user.id, username: user.username, auth_method: user.auth_method },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      res.cookie('jwt', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Sign up successful!',
+        token,
+      });
     } catch (error) {
       console.error('Signup error:', error);
-      req.session.error = 'An error occurred during signup';
-      res.redirect('/auth/signup');
+      return res.status(500).json({
+        success: false,
+        message: 'An error occurred during signup',
+      });
     }
   },
 ];
 
 const login = [
-  body('email').isEmail().withMessage('Invalid email'),
+  body('email').isEmail().withMessage('Invalid email format'),
   body('password').notEmpty().withMessage('Password is required'),
-  async (req, res, next) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      req.session.error = errors.array().map(err => err.msg).join(', ');
-      return res.redirect('/auth/login');
+      return res.status(400).json({
+        success: false,
+        message: errors.array().map(err => err.msg).join(', '),
+      });
     }
 
     const { email, password, remember } = req.body;
 
     try {
       const user = await User.findOne({ where: { email } });
-      if (!user || user.auth_method !== 'manual') {
-        console.log('Login failed: Invalid email or user not manual');
-        req.session.error = 'Invalid credentials';
-        return res.redirect('/auth/login');
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Email not registered',
+        });
+      }
+      if (user.auth_method !== 'manual') {
+        return res.status(401).json({
+          success: false,
+          message: 'Account registered via GitHub. Use GitHub login.',
+        });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        console.log('Login failed: Invalid password');
-        req.session.error = 'Invalid credentials';
-        return res.redirect('/auth/login');
+        return res.status(401).json({
+          success: false,
+          message: 'Incorrect password',
+        });
       }
-
-      // Set session maxAge based on remember checkbox
-      req.session.cookie.maxAge = remember ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 7 days or 1 day
-      console.log('Session maxAge set to:', req.session.cookie.maxAge, 'Remember Me:', remember);
 
       await LoginLog.create({
         user_id: user.id,
         ip_address: req.ip,
-        login_method: 'manual',
       });
 
-      // Use Passport's req.login to establish session
-      req.login(user, (error) => {
-        if (error) {
-          console.error('req.login error:', error);
-          req.session.error = 'Login failed';
-          return next(error);
-        }
-        console.log('Login successful, user:', user.toJSON());
-        req.session.error = null;
-        res.redirect('/auth/home');
+      const expiresIn = remember ? '7d' : '1d';
+      const token = jwt.sign(
+        { id: user.id, username: user.username, auth_method: user.auth_method },
+        process.env.JWT_SECRET,
+        { expiresIn }
+      );
+
+      res.cookie('jwt', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: remember ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000, // 7 days or 1 day
+      });
+
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        token,
       });
     } catch (error) {
       console.error('Login error:', error);
-      req.session.error = 'An error occurred during login';
-      res.redirect('/auth/login');
+      return res.status(500).json({
+        success: false,
+        message: 'An error occurred during login',
+      });
     }
   },
 ];
 
 const githubCallback = async (req, res) => {
   try {
+    const user = req.user;
+    if (!user) {
+      console.error('GitHub callback: No user found in req.user');
+      return res.redirect('/auth/login?error=GitHub authentication failed');
+    }
+
+    console.log('GitHub callback: User found:', { id: user.id, username:
+
+ user.username, auth_method: user.auth_method });
+
     await LoginLog.create({
-      user_id: req.user.id,
+      user_id: user.id,
       ip_address: req.ip,
-      login_method: 'github',
     });
 
-    req.session.error = null;
-    res.redirect('/auth/home');
+    const token = jwt.sign(
+      { id: user.id, username: user.username, auth_method: user.auth_method },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('GitHub callback: JWT token generated');
+
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    console.log('GitHub callback: JWT cookie set');
+
+    // Clear Passport session
+    req.logout((err) => {
+      if (err) {
+        console.error('Passport logout error in githubCallback:', err);
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error in githubCallback:', err);
+        }
+        res.clearCookie('connect.sid');
+        console.log('GitHub callback: Session destroyed, redirecting to /auth/home');
+        res.redirect('/auth/home'); // Removed token query parameter
+      });
+    });
   } catch (error) {
     console.error('GitHub callback error:', error);
-    req.session.error = 'An error occurred during GitHub login';
-    res.redirect('/auth/login');
+    return res.redirect('/auth/login?error=An error occurred during GitHub login');
   }
 };
 
 const logout = (req, res) => {
-  req.logout((error) => {
-    if (error) {
-      console.error('Logout error:', error);
-      return res.redirect('/auth/home');
-    }
-    req.session.destroy(() => {
-      res.redirect('/auth/login');
+  try {
+    req.logout((err) => {
+      if (err) {
+        console.error('Passport logout error:', err);
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+        }
+        res.clearCookie('connect.sid');
+        res.clearCookie('jwt');
+        return res.status(200).json({
+          success: true,
+          message: 'Logged out successfully',
+        });
+      });
     });
-  });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during logout',
+    });
+  }
 };
 
 module.exports = { signup, login, githubCallback, logout };
