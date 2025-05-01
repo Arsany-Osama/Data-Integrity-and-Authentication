@@ -15,7 +15,10 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Set up EJS as the view engine
 app.set('view engine', 'ejs');
+app.set('views', '../client/views');
 
 // Log all requests for debugging
 app.use((req, res, next) => {
@@ -23,8 +26,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files
-app.use(express.static('public'));
+// Serve static files from client/public
+app.use(express.static('../client/public'));
 
 // Session middleware for Passport
 app.use(
