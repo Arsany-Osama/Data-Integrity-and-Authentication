@@ -40,7 +40,7 @@ A secure web application built with **Node.js** and **Express.js**, implementing
 - **Login** – With light Mode:
   ![Screenshot (554)](https://github.com/user-attachments/assets/c6b33bc0-5a08-49d6-850a-a11670adc70e)
 
-- **Homepage** – With light Mode:
+- **Homepage** – With Dark Mode:
   ![Screenshot (555)](https://github.com/user-attachments/assets/49bcf03a-9be9-4735-b1bf-9108bca22dd2)
 
 # API Endpoints
